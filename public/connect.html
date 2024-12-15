@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Sharing - Connect</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Screen Sharing</h1>
+        <div class="connect-container">
+            <h2>Connect to Screen</h2>
+            <input type="text" id="connect-code" placeholder="Enter sharing code">
+            <button id="connect" class="primary-button">Connect</button>
+            <div id="status" class="status"></div>
+            <div class="video-container">
+                <video id="remote-video" autoplay playsinline></video>
+            </div>
+        </div>
+        <a href="/" class="switch-mode">Share Screen</a>
+    </div>
+    <script src="connect.js"></script>
+</body>
+</html>

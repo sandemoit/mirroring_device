@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Sharing - Share</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Screen Sharing</h1>
+        <div class="share-container">
+            <h2>Share Your Screen</h2>
+            <div class="code-display" id="generated-code" onclick="copyCode()"></div>
+            <button id="generate-code" class="primary-button">Generate Code</button>
+            <button id="start-sharing" class="primary-button" disabled>Start Sharing</button>
+            <p>Share this link to connect: <span id="connect-link" onclick="copyLink()"></span></p>
+            <div id="status" class="status"></div>
+        </div>
+        <a href="/connect" target="_blank" class="switch-mode">Connect to Screen</a>
+    </div>
+    <script>
+        function copyCode() {
+            const code = document.getElementById('generated-code').textContent;
+            navigator.clipboard.writeText(code);
+            alert('Code copied to clipboard');
+        }
+        
+        function copyLink() {
+            const link = document.getElementById('connect-link').textContent;
+            navigator.clipboard.writeText(link);
+            alert('Link copied to clipboard');
+        }
+    </script>
+    <script src="share.js"></script>
+</body>
+</html>
