@@ -2,6 +2,7 @@ let localStream;
 let peerConnection;
 let signalingServer;
 let currentCode = '';
+let offerSource = null;
 
 // Fungsi untuk inisialisasi WebSocket
 function initWebSocket() {
@@ -71,49 +72,60 @@ async function handleSignalingMessage(data) {
 
 // Handle WebRTC offer
 async function handleOffer(data) {
-    console.log('Creating Peer Connection');
+    console.log('Received Offer:', data);
+
+    offerSource = data.source;
+
     const config = { 
         iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            {
-                urls: "turn:36.65.33.127:3478",
-                username: "user",
-                credential: "password"
-            }
+            { urls: 'stun:stun.l.google.com:19302' }
         ]
     };
-    
+
     peerConnection = new RTCPeerConnection(config);
-    
+
+    // Tambahkan track dari localStream ke PeerConnection
+    if (localStream) {
+        console.log('Adding local stream to PeerConnection');
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+    } else {
+        console.error('No local stream available');
+        return;
+    }
+
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
             signalingServer.send(JSON.stringify({
                 type: 'candidate',
-                target: data.source,
+                target: offerSource, // Kirim kandidat ke pengirim *offer*
                 candidate: event.candidate
             }));
+            console.log('Sending ICE Candidate to:', offerSource);
         }
     };
 
-    // Tambahkan local stream jika tersedia
-    if (localStream) {
-        localStream.getTracks().forEach(track => {
-            console.log('Adding track:', track.kind);
-            peerConnection.addTrack(track, localStream);
-        });
-    }
+    peerConnection.oniceconnectionstatechange = () => {
+        console.log('ICE Connection State:', peerConnection.iceConnectionState);
+        if (peerConnection.iceConnectionState === 'connected') {
+            console.log('ICE Connection Established');
+        }
+    };
 
     try {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+        console.log('Remote description set with offer');
+
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
 
         signalingServer.send(JSON.stringify({
             type: 'answer',
-            target: data.source,
-            answer: answer
+            target: data.source, // Kirim *answer* ke pengirim *offer*
+            answer: peerConnection.localDescription
         }));
+        console.log('Answer sent to:', data.source);
     } catch (error) {
         console.error('Error handling offer:', error);
     }

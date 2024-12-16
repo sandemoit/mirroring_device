@@ -16,12 +16,13 @@ function initWebSocket() {
     };
 
     signalingServer.onmessage = async (message) => {
-        try {
-            const data = JSON.parse(message.data);
-            console.log('Received Signaling Message:', data);
-            await handleSignalingMessage(data);
-        } catch (error) {
-            console.error('Error handling message:', error);
+        const data = JSON.parse(message.data);
+        if (data.type === 'candidate') {
+            console.log('Received ICE Candidate:', data.candidate.candidate);
+            if (peerConnection && data.candidate) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                console.log('Added ICE Candidate:', data.candidate.candidate);
+            }
         }
     };
 }
@@ -55,57 +56,60 @@ async function startConnection(code) {
     try {
         console.log('Starting connection with code:', code);
 
-        // Konfirmasi koneksi WebSocket
         if (!signalingServer || signalingServer.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket not connected');
         }
 
-        // Konfigurasi WebRTC
         const config = { 
             iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                {
-                    urls: "turn:36.65.33.127:3478",
-                    username: "user",
-                    credential: "password"
-                }
+                { urls: 'stun:stun.l.google.com:19302' }
             ]
         };
-        
+
         peerConnection = new RTCPeerConnection(config);
 
-        // Handler untuk ICE candidate
+        // Handle ICE candidate
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
                 signalingServer.send(JSON.stringify({
                     type: 'candidate',
-                    target: code,
+                    target: code, // Kirim kandidat ke kode perangkat
                     candidate: event.candidate
                 }));
+                console.log('Sending ICE Candidate to:', code);
             }
         };
 
-        // Handler untuk track
+        // Handle remote track
         peerConnection.ontrack = (event) => {
             console.log('Remote track received:', event.track.kind);
-            const remoteVideo = document.getElementById('remote-video');
-            remoteVideo.srcObject = event.streams[0];
-            remoteVideo.play().catch(error => {
-                console.error('Error playing video:', error);
-            });
-            updateStatus('Connected and receiving video', 'success');
+            const video = document.getElementById('remote-video');
+            if (video.srcObject !== event.streams[0]) {
+                video.srcObject = event.streams[0];
+                video.play().catch(error => {
+                    console.error('Error playing video:', error);
+                });
+                console.log('Remote stream set to video element');
+            } else {
+                console.log('Stream already set');
+            }
         };
 
-        // Buat offer
+        peerConnection.oniceconnectionstatechange = () => {
+            console.log('ICE Connection State:', peerConnection.iceConnectionState);
+            if (peerConnection.iceConnectionState === 'connected') {
+                console.log('ICE Connection Established');
+            }
+        };
+
+
         const offer = await peerConnection.createOffer({
             offerToReceiveVideo: true,
             offerToReceiveAudio: false
         });
-        
         await peerConnection.setLocalDescription(offer);
 
-        // Kirim offer
+        // Send offer
         signalingServer.send(JSON.stringify({
             type: 'offer',
             target: code,
@@ -126,31 +130,12 @@ document.getElementById('connect').addEventListener('click', async () => {
         return;
     }
 
-    // Close existing connection if any
     if (peerConnection) {
         peerConnection.close();
     }
 
-    // Start new connection
     startConnection(code);
 });
 
-// Handle page visibility changes
-document.getElementById('connect').addEventListener('click', async () => {
-    const code = document.getElementById('connect-code').value.trim().toUpperCase();
-    if (!code) {
-        updateStatus('Please enter a sharing code', 'error');
-        return;
-    }
-
-    // Tutup koneksi yang ada jika ada
-    if (peerConnection) {
-        peerConnection.close();
-    }
-
-    // Mulai koneksi baru
-    startConnection(code);
-});
-
-// Inisialisasi WebSocket
+// Initialize WebSocket
 initWebSocket();

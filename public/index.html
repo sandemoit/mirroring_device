@@ -33,5 +33,27 @@
         }
     </script>
     <script src="share.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.1/dist/peerjs.min.js"></script>
+    <script>
+        const peer = new Peer();
+        let localStream;
+
+        peer.on('open', (id) => {
+            console.log('Peer ID:', id);
+            document.getElementById('code-display').textContent = id;
+
+            // Start sharing screen
+            document.getElementById('start-sharing').addEventListener('click', async () => {
+                localStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                console.log('Screen sharing started');
+            });
+        });
+
+        peer.on('call', (call) => {
+            call.answer(localStream); // Share local stream
+            console.log('Incoming call answered');
+        });
+    </script>
+
 </body>
 </html>
